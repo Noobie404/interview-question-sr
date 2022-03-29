@@ -24,11 +24,10 @@
                         <h6 class="m-0 font-weight-bold text-primary">Media</h6>
                     </div>
                     <div class="card-body border">
-                        <vue-dropzone ref="dropzone" id="dropzone" :options="dropzoneOptions" @vdropzone-complete="afterComplete" v-on:vdropzone-removed-file="removeThisFile"></vue-dropzone>
+                        <vue-dropzone ref="dropzone" id="dropzone" :options="dropzoneOptions" @vdropzone-complete="afterComplete" @vdropzone-mounted="loadPictures"       v-on:vdropzone-removed-file="removeThisFile"></vue-dropzone>
                     </div>
                 </div>
             </div>
-
             <div class="col-md-6">
                 <div class="card shadow mb-4">
                     <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
@@ -91,7 +90,7 @@
             </div>
         </div>
 
-        <button @click="saveProduct" type="submit" class="btn btn-lg btn-primary">Save</button>
+        <button @click="updateProduct" type="submit" class="btn btn-lg btn-primary">Update</button>
         <button type="button" class="btn btn-secondary btn-lg">Cancel</button>
     </section>
 </template>
@@ -110,20 +109,31 @@ export default {
         variants: {
             type: Array,
             required: true
+        },
+        product: {
+            type: Object,
+            required: true
+        },
+        query_selected_variants: {
+            type: Array,
+            required: true
+        },
+        selected_var_price: {
+            type: Array,
+            required: true
+        },
+        variant_img: {
+            type: Array,
+            required: true
         }
     },
     data() {
         return {
-            product_name: '',
-            product_sku: '',
-            description: '',
+            product_name: this.product.title,
+            product_sku: this.product.sku,
+            description: this.product.description,
             images: [],
-            product_variant: [
-                {
-                    option: this.variants[0].id,
-                    tags: []
-                }
-            ],
+            product_variant: [],
             product_variant_prices: [],
             dropzoneOptions: {
                 url: 'https://httpbin.org/post',
@@ -131,7 +141,7 @@ export default {
                 maxFilesize: 0.5,
                 headers: {"My-Awesome-Header": "header value"},
                 addRemoveLinks: true
-            }
+            },
         }
     },
     methods: {
@@ -155,7 +165,6 @@ export default {
             this.product_variant.filter((item) => {
                 tags.push(item.tags);
             })
-
             this.getCombn(tags).forEach(item => {
                 this.product_variant_prices.push({
                     title: item,
@@ -179,7 +188,7 @@ export default {
         },
 
         // store product into database
-        saveProduct() {
+        updateProduct() {
             let product = {
                 title: this.product_name,
                 sku: this.product_sku,
@@ -188,15 +197,71 @@ export default {
                 product_variant: this.product_variant,
                 product_variant_prices: this.product_variant_prices
             }
-            axios.post('/product', product).then(response => {
-                console.log(response.data);
+            axios.post('/product/'+this.product.id, {
+                data: product,
+                _method: 'PUT'
+            }).then(response => {
                 location.reload();
+                console.log(response.data);
             }).catch(error => {
                 location.reload();
                 console.log(error);
             })
         },
-        removeThisFile(file){
+        // get product data
+        getEditData() {
+            // it will push a new object into product variant
+            this.query_selected_variants.forEach(item => {
+                var push_tags = [];
+                item.tags.forEach(tag => {
+                    push_tags.push(tag.variant);
+                })
+                this.product_variant.push({
+                    option: item.variant_id,
+                    tags: push_tags
+                })
+            })
+            let tags = [];
+            this.product_variant_prices = [];
+            this.product_variant.filter((item) => {
+                tags.push(item.tags);
+            })
+            this.getCombn(tags).forEach((item,index) => {
+                this.product_variant_prices.push({
+                    title: item,
+                    price: this.selected_var_price[index].price,
+                    stock: this.selected_var_price[index].stock,
+                })
+            })
+        },
+        loadPictures(){
+            this.variant_img.forEach(image => {
+                var file = { size: 123,name: image.file_path };
+                var url = window.location.origin+'/uploads/'+image.file_path;
+                // this.$refs.dropzone.manuallyAddFile(file, url);
+                this.$refs.dropzone.manuallyAddFile({
+                    name: image.file_path , size: 2222}, window.location.origin+'/uploads/'+image.file_path,
+                    null,
+                    null,
+                    {
+                        dontSubstractMaxFiles: false,
+                        addToFiles: true
+                    }
+                );
+            });
+        },
+        removeThisFile (file) {
+            let FileName = file.name
+            axios.post('/upload/delete', {
+                name: FileName
+            })
+            .then(function (response) {
+                console.log(response);
+                alert(response.data.msg);
+            })
+            .catch(function (error) {
+                console.log(error);
+            });
             file.previewTemplate = null;
             file.upload = null;
             file.dataURL = null;
@@ -206,7 +271,7 @@ export default {
         }
     },
     mounted() {
-        console.log('Component mounted.')
+        this.getEditData();
     }
 }
 </script>

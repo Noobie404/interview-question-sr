@@ -98,10 +98,14 @@
             <!-- Topbar -->
         @include('layouts.particals.navbar')
         <!-- End of Topbar -->
+        <div class="row">
+            <div class="col-md-12">
+                @include('layouts.includes.flash')
+            </div>
+        </div>
 
             <!-- Begin Page Content -->
             <div class="container-fluid">
-
                 @yield('content')
 
             </div>
@@ -155,6 +159,7 @@
 </div>
 
 <!-- Scripts -->
-<script src="{{ asset('js/app.js') }}" defer></script>
+<script src="{{ asset('js/app.js') }}?time={{ time() }}" defer></script>
+@stack('custom_js')
 </body>
 </html>
